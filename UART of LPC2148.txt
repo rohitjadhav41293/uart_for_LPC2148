@@ -1,0 +1,103 @@
+#include<lpc214x.h>
+void pll(void);
+void delay(int a);
+void uart(void);
+void tx(unsigned char ch);
+void message(unsigned char *d); 
+unsigned char rx(void);
+
+int main()
+{
+	PINSEL0 = 0x00000005;
+	IODIR0 = 0xE0000000;
+	pll();
+	uart();
+	unsigned char dr;
+	while(1)
+	{
+	dr = rx();
+	if(dr == '0')
+	{
+		IO0SET = 1<<31;
+	message("You have entered 0, YELLOW LED is ON\n");
+	}
+	else if(dr == '1')
+	{
+		IO0CLR = 1<<31;
+		message("You have entered 1, YELLOW LED is OFF\n");
+	}
+	else if(dr == '2')
+	{
+		IOSET0 = 1<<30;
+		message("You have entered 2, GREEN LED is ON\n");
+	}
+	else if(dr == '3')
+	{
+		IOCLR0 = 1<<30;
+		message("You have entered 3, GREEN LED is OFF\n");
+	}
+	else if(dr == '4')
+	{
+		IOSET0 = 1<<29;
+		message("You have entered 4, RED LED is ON\n");
+	}
+	else if(dr == '5')
+	{
+		IOCLR0 = 1<<29;
+		message("You have entered 5, RED LED is OFF\n");
+	}
+	}
+}
+
+void pll(void)
+{
+	PLL0CON = 0x01;
+	PLL0CFG = 0x24;
+	PLL0FEED = 0xAA;
+	PLL0FEED = 0x55;
+	if((PLL0STAT & 0x0400) == 0);
+	PLL0CON = 0x03;
+	PLL0FEED = 0xAA;
+	PLL0FEED = 0x55;
+	VPBDIV = 0x01;
+}
+
+void delay(int a)
+{
+	T0CTCR = 0x00;
+	T0PR = 12000000-1;
+	T0TCR = 0x02;
+	T0TCR = 0x01;
+	while(T0TC < a);
+	T0TCR = 0x00;
+}
+
+void uart(void)
+{	
+	U0LCR = 0x83;
+	U0DLL = 110;
+	U0DLM = 1;   
+	U0FDR = (15<<4) | 1;
+	U0LCR &= 0x0F;
+}
+
+void message(unsigned char *d)
+{
+	while(*d!='\0')
+	{
+		tx(*d);
+		d++;
+	}
+}
+
+void tx(unsigned char ch)
+{
+	while((U0LSR & 0x20) == 0);
+	U0THR = ch;
+}
+
+unsigned char rx(void)
+{
+	while((U0LSR & 0x01) == 0);
+	return U0RBR;
+}
